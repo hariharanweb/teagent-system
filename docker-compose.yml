@@ -1,0 +1,25 @@
+services:
+  # In-memory mode: data resets whenever the container restarts, which is fine for local dev
+  # (re-run `npm run dynamodb:setup` + `npm run seed -w @teagent/backend`). Deliberately not using
+  # a mounted volume for persistence — on some Docker setups (e.g. Colima's VM filesystem) the
+  # bind-mounted SQLite file fails to open with permission errors, which makes DynamoDB Local
+  # silently hang on every request instead of failing loudly.
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    ports:
+      - '8000:8000'
+    command: ['-jar', 'DynamoDBLocal.jar', '-inMemory', '-sharedDb']
+
+  # S3-compatible local storage for image uploads. No volume (same reasoning as above — ephemeral
+  # is fine, re-run `npm run s3:setup -w @teagent/backend` after a restart). Ports 9100/9101 (not
+  # the MinIO defaults 9000/9001) to avoid clashing with any other MinIO you already have running.
+  minio:
+    image: minio/minio:latest
+    ports:
+      - '9100:9000'
+      - '9101:9001'
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_API_CORS_ALLOW_ORIGIN: '*'
+    command: ['server', '/data', '--console-address', ':9001']

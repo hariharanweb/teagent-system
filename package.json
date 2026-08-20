@@ -1,0 +1,32 @@
+{
+  "name": "teagent-system",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "npm run build -w @teagent/shared && npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "dev:frontend": "npm run dev -w @teagent/frontend",
+    "dev:backend": "npm run dev -w @teagent/backend",
+    "dynamodb:up": "docker compose up -d dynamodb-local",
+    "minio:up": "docker compose up -d minio",
+    "local:up": "docker compose up -d",
+    "local:down": "docker compose down"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.8.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.4",
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^8.67.0"
+  }
+}

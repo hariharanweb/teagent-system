@@ -1,0 +1,17 @@
+@import '@fontsource-variable/lexend';
+@import '@fontsource/noto-sans-devanagari';
+@import '@fontsource/noto-sans-kannada';
+
+:root {
+  --font-ui: 'Lexend Variable', system-ui, sans-serif;
+  --font-hin: 'Noto Sans Devanagari', var(--font-ui);
+  --font-kan: 'Noto Sans Kannada', var(--font-ui);
+}
+
+[lang='hi'] {
+  font-family: var(--font-hin);
+}
+
+[lang='kn'] {
+  font-family: var(--font-kan);
+}

@@ -1,0 +1,55 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  APP_ENV: prod
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      # OIDC role assumption — no static AWS keys stored as GitHub secrets. The trust policy on
+      # this role restricts it to `repo:<org>/<repo>:ref:refs/heads/main` (see docs/deploy.md).
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build shared package
+        run: npm run build -w @teagent/shared
+
+      - name: Deploy data + API stacks
+        working-directory: packages/infra
+        run: npx cdk deploy "Teagent-${{ env.APP_ENV }}-Data" "Teagent-${{ env.APP_ENV }}-Api" --require-approval never --outputs-file cdk-outputs.json
+
+      - name: Extract API URL and write frontend env
+        working-directory: packages/infra
+        run: |
+          API_URL=$(node -p "require('./cdk-outputs.json')['Teagent-${{ env.APP_ENV }}-Api'].ApiUrl")
+          echo "VITE_API_BASE_URL=$API_URL" > ../frontend/.env.production
+          echo "Resolved API URL: $API_URL"
+
+      - name: Build frontend
+        run: npm run build -w @teagent/frontend
+
+      - name: Deploy frontend stack
+        working-directory: packages/infra
+        run: npx cdk deploy "Teagent-${{ env.APP_ENV }}-Frontend" --require-approval never

@@ -1,0 +1,40 @@
+{
+  "name": "@teagent/backend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run",
+    "dev": "tsx watch src/localServer.ts",
+    "seed": "tsx src/scripts/seedProfiles.ts",
+    "dynamodb:setup": "tsx src/scripts/setupLocalTable.ts",
+    "s3:setup": "tsx src/scripts/setupLocalBucket.ts"
+  },
+  "dependencies": {
+    "@teagent/shared": "*",
+    "@langchain/core": "^1.2.9",
+    "@langchain/langgraph": "^1.4.12",
+    "@langchain/openai": "^1.5.9",
+    "@aws-sdk/client-dynamodb": "^3.679.0",
+    "@aws-sdk/lib-dynamodb": "^3.679.0",
+    "@aws-sdk/client-s3": "^3.679.0",
+    "@aws-sdk/s3-request-presigner": "^3.679.0",
+    "@aws-sdk/client-ssm": "^3.679.0",
+    "bcryptjs": "^2.4.3",
+    "jose": "^5.9.6",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/express": "^5.0.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "tsx": "^4.19.1",
+    "typescript": "^5.5.4",
+    "vitest": "^4.1.11"
+  }
+}

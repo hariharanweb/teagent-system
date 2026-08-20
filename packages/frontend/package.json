@@ -1,0 +1,35 @@
+{
+  "name": "@teagent/frontend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --ext .ts,.tsx",
+    "test": "vitest run",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@teagent/shared": "*",
+    "@fontsource-variable/lexend": "^5.1.0",
+    "@fontsource/noto-sans-devanagari": "^5.1.0",
+    "@fontsource/noto-sans-kannada": "^5.1.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.2",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.2",
+    "@testing-library/react": "^16.0.1",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.1",
+    "@vitejs/plugin-react": "^6.1.0",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.5.4",
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11"
+  }
+}
