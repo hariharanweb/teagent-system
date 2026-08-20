@@ -50,18 +50,34 @@ aws iam create-role \
   --role-name teagent-github-deploy \
   --assume-role-policy-document file://trust-policy.json
 
-# Standard CDK+OIDC pattern: let the deploy role assume the CDK bootstrap's execution role,
-# rather than granting broad permissions directly.
+# CDK+OIDC pattern: let the deploy role assume the CDK bootstrap's roles, rather than granting
+# broad permissions directly. It's not enough to only assume cfn-exec-role — the CDK CLI itself
+# (not just CloudFormation) calls deploy-role and file-publishing-role directly while orchestrating
+# a deploy, and does its own bootstrap-version check via ssm:GetParameter using the CALLING
+# identity (i.e. this role itself, before any role assumption), so that needs a separate grant.
 aws iam put-role-policy \
   --role-name teagent-github-deploy \
   --policy-name AssumeCdkExecutionRole \
   --policy-document '{
     "Version": "2012-10-17",
-    "Statement": [{
-      "Effect": "Allow",
-      "Action": "sts:AssumeRole",
-      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/cdk-*-cfn-exec-role-*"
-    }]
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": "sts:AssumeRole",
+        "Resource": [
+          "arn:aws:iam::<ACCOUNT_ID>:role/cdk-*-cfn-exec-role-*",
+          "arn:aws:iam::<ACCOUNT_ID>:role/cdk-*-deploy-role-*",
+          "arn:aws:iam::<ACCOUNT_ID>:role/cdk-*-file-publishing-role-*",
+          "arn:aws:iam::<ACCOUNT_ID>:role/cdk-*-lookup-role-*",
+          "arn:aws:iam::<ACCOUNT_ID>:role/cdk-*-image-publishing-role-*"
+        ]
+      },
+      {
+        "Effect": "Allow",
+        "Action": "ssm:GetParameter",
+        "Resource": "arn:aws:ssm:*:<ACCOUNT_ID>:parameter/cdk-bootstrap/*/version"
+      }
+    ]
   }'
 ```
 
