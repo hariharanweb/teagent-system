@@ -18,7 +18,14 @@ aws iam create-open-id-connect-provider \
   --client-id-list sts.amazonaws.com \
   --thumbprint-list 6938fd4d98bab03faadb97b34396831e3780aea1
 
-# Create the deploy role, trusted only for pushes to main on this repo
+# Create the deploy role, trusted only for pushes to main on this repo.
+#
+# NOTE: GitHub's OIDC token `sub` claim isn't reliably just "repo:OWNER/REPO:ref:refs/heads/main"
+# — GitHub has been rolling out "immutable ID" subjects, which look like
+# "repo:OWNER@ORG_ID/REPO@REPO_ID:ref:refs/heads/main" instead (confirmed via CloudTrail's
+# AssumeRoleWithWebIdentity error logs when this bit us — the errorMessage doesn't say which
+# format was sent, but the request's userIdentity.userName does). Trust BOTH shapes so this
+# doesn't silently break depending on which one your account/repo gets:
 cat > trust-policy.json <<'EOF'
 {
   "Version": "2012-10-17",
@@ -28,7 +35,12 @@ cat > trust-policy.json <<'EOF'
     "Action": "sts:AssumeRoleWithWebIdentity",
     "Condition": {
       "StringEquals": { "token.actions.githubusercontent.com:aud": "sts.amazonaws.com" },
-      "StringLike": { "token.actions.githubusercontent.com:sub": "repo:<GITHUB_ORG>/<GITHUB_REPO>:ref:refs/heads/main" }
+      "StringLike": {
+        "token.actions.githubusercontent.com:sub": [
+          "repo:<GITHUB_ORG>/<GITHUB_REPO>:ref:refs/heads/main",
+          "repo:<GITHUB_ORG>@*/<GITHUB_REPO>@*:ref:refs/heads/main"
+        ]
+      }
     }
   }]
 }
