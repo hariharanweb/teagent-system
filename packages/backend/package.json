@@ -10,6 +10,7 @@
     "test": "vitest run",
     "dev": "tsx watch src/localServer.ts",
     "seed": "tsx src/scripts/seedProfiles.ts",
+    "change-password": "tsx src/scripts/changePassword.ts",
     "dynamodb:setup": "tsx src/scripts/setupLocalTable.ts",
     "s3:setup": "tsx src/scripts/setupLocalBucket.ts"
   },

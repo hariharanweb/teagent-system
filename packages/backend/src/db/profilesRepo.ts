@@ -69,6 +69,21 @@ export async function listFamilyProfiles(familyId: string): Promise<ProfileSumma
   return (result.Items as ProfileRecord[] | undefined)?.map(toSummary) ?? [];
 }
 
+export async function updatePasswordHash(
+  familyId: string,
+  profileId: string,
+  passwordHash: string,
+): Promise<void> {
+  await client.send(
+    new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `FAMILY#${familyId}`, SK: `PROFILE#${profileId}` },
+      UpdateExpression: 'SET passwordHash = :hash',
+      ExpressionAttributeValues: { ':hash': passwordHash },
+    }),
+  );
+}
+
 export async function touchLastLogin(familyId: string, profileId: string): Promise<void> {
   await client.send(
     new UpdateCommand({
