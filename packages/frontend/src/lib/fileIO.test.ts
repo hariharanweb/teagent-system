@@ -8,12 +8,18 @@ function jsonFile(content: unknown): File {
 describe('readChapterFile', () => {
   it('parses a valid chapter file', async () => {
     const file = jsonFile({
-      formatVersion: 1,
+      formatVersion: 2,
       language: 'hin',
       chapterTitle: 'Chapter 1',
-      translation: [{ meaning: 'hello', wordByWordMeaning: 'hello', hin: 'नमस्ते' }],
-      glossary: [],
-      warnings: [],
+      pages: [
+        {
+          pageId: '11111111-1111-1111-1111-111111111111',
+          translation: [{ meaning: 'hello', wordByWordMeaning: 'hello', hin: 'नमस्ते' }],
+          glossary: [],
+          warnings: [],
+          createdAt: new Date('2026-01-01').toISOString(),
+        },
+      ],
       createdAt: new Date('2026-01-01').toISOString(),
     });
     const chapter = await readChapterFile(file);

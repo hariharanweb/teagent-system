@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CHAT_MESSAGE_MAX_LENGTH } from '@teagent/shared';
+import { CHAT_MESSAGE_MAX_LENGTH, flattenChapterGlossary, flattenChapterTranslation } from '@teagent/shared';
 import { useChapterStore } from '../state/chapterStore';
 import { askDev } from '../api/chatApi';
 import { ApiError } from '../api/client';
@@ -27,8 +27,8 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
       const { reply } = await askDev({
         language: chapter!.language,
         chapterTitle: chapter!.chapterTitle,
-        translation: chapter!.translation,
-        glossary: chapter!.glossary,
+        translation: flattenChapterTranslation(chapter!),
+        glossary: flattenChapterGlossary(chapter!),
         history: chatHistory,
         message,
       });

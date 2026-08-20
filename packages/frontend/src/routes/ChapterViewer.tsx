@@ -1,21 +1,51 @@
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
+import { MAX_PAGES_PER_CHAPTER, flattenChapterGlossary } from '@teagent/shared';
 import { useChapterStore } from '../state/chapterStore';
 import { TranslationLine } from '../components/TranslationLine';
+import { FileDropzone } from '../components/FileDropzone';
 import { downloadChapterFile } from '../lib/fileIO';
+import { extractPagesFromFiles, type PageExtractionProgress } from '../lib/extractPages';
 import { ChatPanel } from './ChatPanel';
 import { Glossary } from './Glossary';
 
 type Tab = 'translation' | 'glossary';
 
+function progressLabel(progress: PageExtractionProgress): string {
+  const verb = progress.stage === 'uploading' ? 'Uploading' : 'Reading';
+  return `${verb} page ${progress.current} of ${progress.total}…`;
+}
+
 export function ChapterViewer() {
   const chapter = useChapterStore((s) => s.chapter);
   const clearChapter = useChapterStore((s) => s.clearChapter);
+  const appendPages = useChapterStore((s) => s.appendPages);
   const [tab, setTab] = useState<Tab>('translation');
   const [chatOpen, setChatOpen] = useState(false);
+  const [addProgress, setAddProgress] = useState<PageExtractionProgress | null>(null);
+  const [addError, setAddError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   if (!chapter) return <Navigate to="/upload" replace />;
+
+  const glossary = flattenChapterGlossary(chapter);
+  const pageWarnings = chapter.pages.flatMap((p) => p.warnings);
+  const atPageLimit = chapter.pages.length >= MAX_PAGES_PER_CHAPTER;
+
+  async function handleAddPages(files: File[]) {
+    if (!chapter) return;
+    setAddError(null);
+    const { pages, failure } = await extractPagesFromFiles(files, chapter.language, setAddProgress);
+    setAddProgress(null);
+    if (pages.length > 0) appendPages(pages);
+    if (failure) {
+      setAddError(
+        pages.length > 0
+          ? `Added ${pages.length} page(s), then stopped at "${failure.fileName}": ${failure.message}`
+          : failure.message,
+      );
+    }
+  }
 
   return (
     <div style={{ maxWidth: 640, margin: '1.5rem auto', padding: '0 1rem 6rem' }}>
@@ -37,10 +67,10 @@ export function ChapterViewer() {
         </div>
       </header>
 
-      {chapter.warnings.length > 0 && (
+      {pageWarnings.length > 0 && (
         <ul style={{ color: 'var(--color-accent)' }}>
-          {chapter.warnings.map((w) => (
-            <li key={w}>{w}</li>
+          {pageWarnings.map((w, i) => (
+            <li key={i}>{w}</li>
           ))}
         </ul>
       )}
@@ -58,18 +88,45 @@ export function ChapterViewer() {
           onClick={() => setTab('glossary')}
           style={{ fontWeight: tab === 'glossary' ? 700 : 400 }}
         >
-          Glossary ({chapter.glossary.length})
+          Glossary ({glossary.length})
         </button>
       </nav>
 
       {tab === 'translation' ? (
         <div>
-          {chapter.translation.map((line, i) => (
-            <TranslationLine key={i} line={line} language={chapter.language} />
+          {chapter.pages.map((page, pageIndex) => (
+            <div key={page.pageId} style={{ marginBottom: '1.5rem' }}>
+              {chapter.pages.length > 1 && (
+                <h2 style={{ fontSize: '1rem', color: 'var(--color-text-muted)', margin: '0 0 0.5rem 0' }}>
+                  Page {pageIndex + 1}
+                </h2>
+              )}
+              {page.translation.map((line, i) => (
+                <TranslationLine key={i} line={line} language={chapter.language} />
+              ))}
+            </div>
           ))}
+
+          <div className="card">
+            {addError && <p style={{ color: 'var(--color-danger)', marginTop: 0 }}>{addError}</p>}
+            {atPageLimit ? (
+              <p style={{ color: 'var(--color-text-muted)', margin: 0 }}>
+                This chapter has reached the {MAX_PAGES_PER_CHAPTER}-page limit.
+              </p>
+            ) : (
+              <FileDropzone
+                label={addProgress ? progressLabel(addProgress) : '📷 Add more pages to this chapter'}
+                accept="image/*"
+                capture
+                multiple
+                disabled={addProgress !== null}
+                onFiles={handleAddPages}
+              />
+            )}
+          </div>
         </div>
       ) : (
-        <Glossary entries={chapter.glossary} language={chapter.language} />
+        <Glossary entries={glossary} language={chapter.language} />
       )}
 
       <button

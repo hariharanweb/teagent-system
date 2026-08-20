@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { ChapterFile, ChatMessage } from '@teagent/shared';
+import { MAX_PAGES_PER_CHAPTER, type ChapterFile, type ChapterPage, type ChatMessage } from '@teagent/shared';
 
 interface ChapterState {
   chapter: ChapterFile | null;
@@ -8,6 +8,8 @@ interface ChapterState {
   setChapter: (chapter: ChapterFile) => void;
   clearChapter: () => void;
   appendChatMessage: (message: ChatMessage) => void;
+  /** Adds more pages to the currently loaded chapter (chat history is kept, unlike setChapter). */
+  appendPages: (pages: ChapterPage[]) => void;
 }
 
 // In-memory + sessionStorage mirror only, so a refresh mid-session doesn't lose an unsaved
@@ -22,6 +24,12 @@ export const useChapterStore = create<ChapterState>()(
       clearChapter: () => set({ chapter: null, chatHistory: [] }),
       appendChatMessage: (message) =>
         set((state) => ({ chatHistory: [...state.chatHistory, message] })),
+      appendPages: (pages) =>
+        set((state) => {
+          if (!state.chapter) return state;
+          const merged = [...state.chapter.pages, ...pages].slice(0, MAX_PAGES_PER_CHAPTER);
+          return { chapter: { ...state.chapter, pages: merged } };
+        }),
     }),
     {
       name: 'teagent-chapter',

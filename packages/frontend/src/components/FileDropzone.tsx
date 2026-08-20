@@ -4,11 +4,12 @@ interface Props {
   label: string;
   accept: string;
   capture?: boolean;
-  onFile: (file: File) => void;
+  multiple?: boolean;
+  onFiles: (files: File[]) => void;
   disabled?: boolean;
 }
 
-export function FileDropzone({ label, accept, capture, onFile, disabled }: Props) {
+export function FileDropzone({ label, accept, capture, multiple, onFiles, disabled }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -26,11 +27,12 @@ export function FileDropzone({ label, accept, capture, onFile, disabled }: Props
         ref={inputRef}
         type="file"
         accept={accept}
+        multiple={multiple}
         capture={capture ? 'environment' : undefined}
         style={{ display: 'none' }}
         onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) onFile(file);
+          const files = Array.from(e.target.files ?? []);
+          if (files.length > 0) onFiles(files);
           e.target.value = '';
         }}
       />
