@@ -37,7 +37,8 @@ EOF
 
 npm run dynamodb:setup -w @teagent/backend       # creates the table (idempotent)
 npm run s3:setup -w @teagent/backend             # creates the uploads bucket (idempotent)
-npm run seed -w @teagent/backend                 # creates demo profiles: parent/parent1234, kid/1234
+SEED_PARENT_PASSWORD=devparent SEED_KID_PASSWORD=1234 \
+  npm run seed -w @teagent/backend               # creates demo profiles: parent/devparent, kid/1234
 ```
 
 Data is ephemeral and resets whenever a container restarts — just re-run the two `:setup` commands

@@ -97,13 +97,18 @@ aws ssm put-parameter --name /teagent/prod/jwt-signing-secret --type SecureStrin
 ## 3. Seed at least one profile
 
 The app has no self-serve signup (deliberately — it's a family app), so nothing logs in until you
-put a profile in DynamoDB yourself. The quickest way is the seed script, which creates a demo
-`parent` / `parent1234` and `kid` / `1234` pair (skips any that already exist, so it's safe to
-re-run):
+put a profile in DynamoDB yourself. The quickest way is the seed script, which creates a `parent`
+and a `kid` profile (skips any that already exist, so it's safe to re-run). Passwords come from
+env vars, not hardcoded source — this repo is public, so a committed real-looking password is a
+real password until someone changes it:
 
 ```bash
-PROFILES_TABLE_NAME=TeagentProfiles-prod npm run seed -w @teagent/backend
+SEED_PARENT_PASSWORD=... SEED_KID_PASSWORD=... \
+  PROFILES_TABLE_NAME=TeagentProfiles-prod npm run seed -w @teagent/backend
 ```
+
+Change them later with the `change-password` script (`npm run change-password -w @teagent/backend
+-- <username> <newPassword>`, pointed at the target environment the same way as above).
 
 Requires AWS credentials in your shell with write access to that table. Change the usernames,
 passwords, and other fields in `packages/backend/src/scripts/seedProfiles.ts` (or replace them

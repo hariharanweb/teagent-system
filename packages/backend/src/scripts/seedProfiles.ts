@@ -6,6 +6,12 @@
  * Usage: npm run seed -w @teagent/backend
  * Works against DynamoDB Local (set DYNAMODB_ENDPOINT, see docker-compose.yml — no AWS account
  * needed) or a real, already-deployed table (set PROFILES_TABLE_NAME + real AWS credentials).
+ *
+ * Passwords come from SEED_PARENT_PASSWORD / SEED_KID_PASSWORD env vars (fall back to an
+ * obviously-fake placeholder if unset) rather than being hardcoded — this repo is public, and a
+ * real-looking committed password is a real password until someone changes it (see
+ * `change-password` script). Set these before seeding anywhere that matters:
+ *   SEED_PARENT_PASSWORD=... SEED_KID_PASSWORD=... npm run seed -w @teagent/backend
  */
 import '../lib/loadEnv.js';
 import { randomUUID } from 'node:crypto';
@@ -25,10 +31,12 @@ interface SeedProfile {
   preferredLanguage: 'hin' | 'kan';
 }
 
+const FALLBACK_PASSWORD_PLACEHOLDER = 'CHANGE_ME_set_SEED_*_PASSWORD_env_var';
+
 const SEED_PROFILES: SeedProfile[] = [
   {
     username: 'parent',
-    password: 'parent1234',
+    password: process.env.SEED_PARENT_PASSWORD ?? FALLBACK_PASSWORD_PLACEHOLDER,
     displayName: 'Parent',
     avatarKey: 'owl',
     role: 'parent',
@@ -36,7 +44,7 @@ const SEED_PROFILES: SeedProfile[] = [
   },
   {
     username: 'kid',
-    password: '1234',
+    password: process.env.SEED_KID_PASSWORD ?? FALLBACK_PASSWORD_PLACEHOLDER,
     displayName: 'Kiddo',
     avatarKey: 'panda',
     role: 'kid',
@@ -90,6 +98,11 @@ async function resolveFamilyId(): Promise<string> {
 }
 
 async function main() {
+  if (SEED_PROFILES.some((p) => p.password === FALLBACK_PASSWORD_PLACEHOLDER)) {
+    console.warn(
+      'WARNING: SEED_PARENT_PASSWORD/SEED_KID_PASSWORD not set — using an unusable placeholder password. Set them if you actually need to log in.',
+    );
+  }
   console.log(`Seeding demo profiles into table "${TABLE_NAME}"...`);
   const familyId = await resolveFamilyId();
   for (const profile of SEED_PROFILES) {
