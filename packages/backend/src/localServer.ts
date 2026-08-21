@@ -9,6 +9,7 @@ import { handler as loginHandler } from './handlers/auth/login.js';
 import { handler as familyProfilesHandler } from './handlers/auth/familyProfiles.js';
 import { handler as presignHandler } from './handlers/uploads/presign.js';
 import { handler as extractHandler } from './handlers/chapters/extract.js';
+import { handler as lessonPlanHandler } from './handlers/chapters/lessonPlan.js';
 import { handler as chatAskHandler } from './handlers/chat/ask.js';
 
 const PORT = process.env.PORT ?? 3000;
@@ -76,6 +77,7 @@ mount('post', '/auth/login', loginHandler, false);
 mount('get', '/auth/family-profiles', familyProfilesHandler, true);
 mount('post', '/uploads/presign', presignHandler, true);
 mount('post', '/chapters/extract', extractHandler, true);
+mount('post', '/chapters/lesson-plan', lessonPlanHandler, true);
 mount('post', '/chat/ask', chatAskHandler, true);
 
 app.listen(PORT, () => {

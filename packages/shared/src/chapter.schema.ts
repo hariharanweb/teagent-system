@@ -29,6 +29,8 @@ export const chapterFileSchema = z
     chapterTitle: z.string().min(1),
     pages: z.array(chapterPageSchema).min(1).max(MAX_PAGES_PER_CHAPTER),
     createdAt: z.string().datetime(),
+    /** Generated on-demand when the Lesson Plan tab is first opened, not at extraction time. */
+    lessonPlan: z.string().optional(),
   })
   .superRefine((chapter, ctx) => {
     const lang = chapter.language as LanguageCode;

@@ -20,7 +20,7 @@ async function extractHandler(event: AuthenticatedEvent) {
     throw new UnauthorizedError('This upload does not belong to your profile');
   }
 
-  const usage = await incrementAndCheckDailyUsage(profileId, DAILY_EXTRACT_CAP);
+  const usage = await incrementAndCheckDailyUsage(profileId, 'extract', DAILY_EXTRACT_CAP);
   if (!usage.withinCap) throw new RateLimitedError();
 
   const result = await extractChapterGraph.invoke({ imageS3Key: s3Key, language });

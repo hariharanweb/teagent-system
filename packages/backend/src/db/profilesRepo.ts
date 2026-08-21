@@ -95,12 +95,16 @@ export async function touchLastLogin(familyId: string, profileId: string): Promi
   );
 }
 
+export type UsageFeature = 'extract' | 'chat' | 'lessonPlan';
+
 /**
- * Per-profile daily usage counter for /chapters/extract and /chat/ask, to bound OpenAI
- * spend from repeated use (plan risk #3). Stored as usage metadata, not lesson content.
+ * Per-profile, per-feature daily usage counter (extract/chat/lessonPlan each have their own
+ * counter and cap) to bound OpenAI spend from repeated use (plan risk #3). Stored as usage
+ * metadata, not lesson content.
  */
 export async function incrementAndCheckDailyUsage(
   profileId: string,
+  feature: UsageFeature,
   dailyCap: number,
 ): Promise<{ count: number; withinCap: boolean }> {
   const today = new Date().toISOString().slice(0, 10);
@@ -109,7 +113,7 @@ export async function incrementAndCheckDailyUsage(
   const result = await client.send(
     new UpdateCommand({
       TableName: TABLE_NAME,
-      Key: { PK: `PROFILE#${profileId}`, SK: `USAGE#${today}` },
+      Key: { PK: `PROFILE#${profileId}`, SK: `USAGE#${today}#${feature}` },
       UpdateExpression: 'SET #count = if_not_exists(#count, :zero) + :one, #ttl = :ttl',
       ExpressionAttributeNames: { '#count': 'count', '#ttl': 'ttl' },
       ExpressionAttributeValues: { ':zero': 0, ':one': 1, ':ttl': ttlEpochSeconds },

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { MAX_PAGES_PER_CHAPTER, flattenChapterGlossary } from '@teagent/shared';
 import { useChapterStore } from '../state/chapterStore';
@@ -9,7 +9,11 @@ import { extractPagesFromFiles, type PageExtractionProgress } from '../lib/extra
 import { ChatPanel } from './ChatPanel';
 import { Glossary } from './Glossary';
 
-type Tab = 'translation' | 'glossary';
+// react-markdown/remark-gfm are only needed for this one tab — lazy-load so they don't bloat the
+// initial bundle every screen pays for.
+const LessonPlan = lazy(() => import('./LessonPlan').then((m) => ({ default: m.LessonPlan })));
+
+type Tab = 'translation' | 'glossary' | 'lessonPlan';
 
 function progressLabel(progress: PageExtractionProgress): string {
   const verb = progress.stage === 'uploading' ? 'Uploading' : 'Reading';
@@ -90,9 +94,16 @@ export function ChapterViewer() {
         >
           Glossary ({glossary.length})
         </button>
+        <button
+          type="button"
+          onClick={() => setTab('lessonPlan')}
+          style={{ fontWeight: tab === 'lessonPlan' ? 700 : 400 }}
+        >
+          Lesson Plan
+        </button>
       </nav>
 
-      {tab === 'translation' ? (
+      {tab === 'translation' && (
         <div>
           {chapter.pages.map((page, pageIndex) => (
             <div key={page.pageId} style={{ marginBottom: '1.5rem' }}>
@@ -125,8 +136,12 @@ export function ChapterViewer() {
             )}
           </div>
         </div>
-      ) : (
-        <Glossary entries={glossary} language={chapter.language} />
+      )}
+      {tab === 'glossary' && <Glossary entries={glossary} language={chapter.language} />}
+      {tab === 'lessonPlan' && (
+        <Suspense fallback={<p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>}>
+          <LessonPlan />
+        </Suspense>
       )}
 
       <button

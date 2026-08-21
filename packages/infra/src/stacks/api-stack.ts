@@ -147,6 +147,24 @@ export class ApiStack extends Stack {
       }),
     );
 
+    const lessonPlanFn = new LambdaNodeFn(this, 'LessonPlanFn', {
+      entry: backendHandlerEntry('handlers/chapters/lessonPlan.ts'),
+      environment: {
+        ...commonEnv,
+        PROFILES_TABLE_NAME: profilesTable.tableName,
+        DAILY_LESSON_PLAN_CAP: String(envConfig.dailyLessonPlanCap),
+      },
+      memoryMb: 512,
+      timeoutSeconds: 20,
+    });
+    profilesTable.grantReadWriteData(lessonPlanFn); // usage counter only — no lesson content stored
+    lessonPlanFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['ssm:GetParameter'],
+        resources: [ssmParamArn('openai-api-key')],
+      }),
+    );
+
     // --- HTTP API + routes ---
     this.httpApi = new apigwv2.HttpApi(this, 'HttpApi', {
       corsPreflight: {
@@ -188,6 +206,12 @@ export class ApiStack extends Stack {
       path: '/chat/ask',
       methods: [apigwv2.HttpMethod.POST],
       integration: new HttpLambdaIntegration('ChatAskIntegration', chatAskFn),
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/chapters/lesson-plan',
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new HttpLambdaIntegration('LessonPlanIntegration', lessonPlanFn),
       authorizer,
     });
 

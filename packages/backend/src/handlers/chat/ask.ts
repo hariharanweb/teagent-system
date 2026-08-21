@@ -13,7 +13,7 @@ async function chatAskHandler(event: AuthenticatedEvent) {
   const parsed = chatAskRequestSchema.safeParse(JSON.parse(event.body ?? '{}'));
   if (!parsed.success) throw new ValidationError('Invalid chat request');
 
-  const usage = await incrementAndCheckDailyUsage(profileId, DAILY_CHAT_CAP);
+  const usage = await incrementAndCheckDailyUsage(profileId, 'chat', DAILY_CHAT_CAP);
   if (!usage.withinCap) throw new RateLimitedError("Dev needs a break! Try again tomorrow.");
 
   const { language, chapterTitle, translation, glossary, history, message } = parsed.data;

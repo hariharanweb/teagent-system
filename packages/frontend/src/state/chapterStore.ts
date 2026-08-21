@@ -10,6 +10,7 @@ interface ChapterState {
   appendChatMessage: (message: ChatMessage) => void;
   /** Adds more pages to the currently loaded chapter (chat history is kept, unlike setChapter). */
   appendPages: (pages: ChapterPage[]) => void;
+  setLessonPlan: (lessonPlan: string) => void;
 }
 
 // In-memory + sessionStorage mirror only, so a refresh mid-session doesn't lose an unsaved
@@ -28,8 +29,11 @@ export const useChapterStore = create<ChapterState>()(
         set((state) => {
           if (!state.chapter) return state;
           const merged = [...state.chapter.pages, ...pages].slice(0, MAX_PAGES_PER_CHAPTER);
-          return { chapter: { ...state.chapter, pages: merged } };
+          // Clear any cached lesson plan — it summarized the old, now-incomplete page set.
+          return { chapter: { ...state.chapter, pages: merged, lessonPlan: undefined } };
         }),
+      setLessonPlan: (lessonPlan) =>
+        set((state) => (state.chapter ? { chapter: { ...state.chapter, lessonPlan } } : state)),
     }),
     {
       name: 'teagent-chapter',

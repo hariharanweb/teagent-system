@@ -6,3 +6,4 @@ export * from './auth.schema.js';
 export * from './chat.schema.js';
 export * from './uploads.schema.js';
 export * from './extract.schema.js';
+export * from './lessonPlan.schema.js';

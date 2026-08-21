@@ -16,9 +16,12 @@
     "@fontsource-variable/lexend": "^5.1.0",
     "@fontsource/noto-sans-devanagari": "^5.1.0",
     "@fontsource/noto-sans-kannada": "^5.1.0",
+    "mermaid": "^11.17.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^7.18.2",
+    "remark-gfm": "^4.0.1",
     "zustand": "^5.0.15"
   },
   "devDependencies": {

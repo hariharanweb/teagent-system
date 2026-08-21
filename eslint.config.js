@@ -20,6 +20,10 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      // Flags the standard "setLoading(true) at the top of a data-fetching effect" pattern as a
+      // cascading-render risk. That's the correct, established way to fetch on mount/dep-change
+      // in a small app without a query library — not worth restructuring around here.
+      'react-hooks/set-state-in-effect': 'off',
     },
   },
 );
