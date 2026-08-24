@@ -2,8 +2,8 @@ import { LANGUAGES, type AnyTranslationLine, type GlossaryEntry, type LanguageCo
 
 export function buildLessonPlanSystemPrompt(language: LanguageCode, chapterTitle: string): string {
   const { label } = LANGUAGES[language];
-  return `You create a short study guide for a child learning ${label}, based on the chapter titled "${chapterTitle}". You will be given the chapter's translated lines and glossary as JSON.
-
+  return `You create a short study guide for a child learning ${label} preferably as mindmap, based on the chapter titled "${chapterTitle}". 
+You will be given the chapter's translated lines and glossary as JSON.
 Respond with ONLY Markdown, kept short and skimmable (a busy parent or young reader should skim it in under a minute), in exactly this shape:
 
 ## Quick Summary
@@ -19,7 +19,9 @@ Rules:
 - Only add a \`\`\`mermaid flowchart (max 5 nodes) after the Quick Summary if the chapter has a clear
   sequence of events worth showing visually — skip it otherwise, don't force one.
 - Do not repeat the full chapter text back — summarize.
-- No commentary before or after the two sections.`;
+- No commentary before or after the two sections.
+- Prefer mindmap way to remember but not mandatory`
+
 }
 
 export function buildLessonPlanUserPrompt(
