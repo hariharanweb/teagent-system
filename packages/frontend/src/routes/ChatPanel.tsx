@@ -44,6 +44,7 @@ export function ChatPanel({ onClose }: { onClose: () => void }) {
     <div
       role="dialog"
       aria-label="Ask Dev"
+      className="no-print"
       style={{
         position: 'fixed',
         inset: 0,

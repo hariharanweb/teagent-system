@@ -15,6 +15,12 @@ const LessonPlan = lazy(() => import('./LessonPlan').then((m) => ({ default: m.L
 
 type Tab = 'translation' | 'glossary' | 'lessonPlan';
 
+const TAB_LABELS: Record<Tab, string> = {
+  translation: 'Translation',
+  glossary: 'Glossary',
+  lessonPlan: 'Lesson Plan',
+};
+
 function progressLabel(progress: PageExtractionProgress): string {
   const verb = progress.stage === 'uploading' ? 'Uploading' : 'Reading';
   return `${verb} page ${progress.current} of ${progress.total}…`;
@@ -52,10 +58,13 @@ export function ChapterViewer() {
   }
 
   return (
-    <div style={{ maxWidth: 640, margin: '1.5rem auto', padding: '0 1rem 6rem' }}>
+    <div className="chapter-page" style={{ maxWidth: 640, margin: '1.5rem auto', padding: '0 1rem 6rem' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h1 style={{ margin: 0, fontSize: '1.4rem' }}>{chapter.chapterTitle}</h1>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className="no-print" style={{ display: 'flex', gap: '0.5rem' }}>
+          <button type="button" onClick={() => window.print()} title={`Print the ${TAB_LABELS[tab]} tab`}>
+            🖨️ Print
+          </button>
           <button type="button" onClick={() => downloadChapterFile(chapter)}>
             ⬇️ Save
           </button>
@@ -72,14 +81,14 @@ export function ChapterViewer() {
       </header>
 
       {pageWarnings.length > 0 && (
-        <ul style={{ color: 'var(--color-accent)' }}>
+        <ul className="no-print" style={{ color: 'var(--color-accent)' }}>
           {pageWarnings.map((w, i) => (
             <li key={i}>{w}</li>
           ))}
         </ul>
       )}
 
-      <nav style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+      <nav className="no-print" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
         <button
           type="button"
           onClick={() => setTab('translation')}
@@ -103,6 +112,8 @@ export function ChapterViewer() {
         </button>
       </nav>
 
+      <h2 className="print-only">{TAB_LABELS[tab]}</h2>
+
       {tab === 'translation' && (
         <div>
           {chapter.pages.map((page, pageIndex) => (
@@ -118,7 +129,7 @@ export function ChapterViewer() {
             </div>
           ))}
 
-          <div className="card">
+          <div className="card no-print">
             {addError && <p style={{ color: 'var(--color-danger)', marginTop: 0 }}>{addError}</p>}
             {atPageLimit ? (
               <p style={{ color: 'var(--color-text-muted)', margin: 0 }}>
@@ -146,7 +157,7 @@ export function ChapterViewer() {
 
       <button
         type="button"
-        className="button-primary"
+        className="button-primary no-print"
         onClick={() => setChatOpen(true)}
         style={{
           position: 'fixed',
