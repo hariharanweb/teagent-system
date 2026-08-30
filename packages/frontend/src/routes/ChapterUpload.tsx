@@ -116,9 +116,8 @@ export function ChapterUpload() {
         <FileDropzone
           label={progress ? progressLabel(progress) : '📷 Take or choose photos (one chapter can have several pages)'}
           accept="image/*"
-          capture
           multiple
-          disabled={busy}
+          disabled={busy || !chapterTitle.trim()}
           onFiles={handlePhotos}
         />
         <FileDropzone

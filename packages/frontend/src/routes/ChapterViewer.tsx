@@ -139,7 +139,6 @@ export function ChapterViewer() {
               <FileDropzone
                 label={addProgress ? progressLabel(addProgress) : '📷 Add more pages to this chapter'}
                 accept="image/*"
-                capture
                 multiple
                 disabled={addProgress !== null}
                 onFiles={handleAddPages}
