@@ -165,6 +165,24 @@ export class ApiStack extends Stack {
       }),
     );
 
+    const narrateFn = new LambdaNodeFn(this, 'NarrateFn', {
+      entry: backendHandlerEntry('handlers/chapters/narrate.ts'),
+      environment: {
+        ...commonEnv,
+        PROFILES_TABLE_NAME: profilesTable.tableName,
+        DAILY_NARRATION_CAP: String(envConfig.dailyNarrationCap),
+      },
+      memoryMb: 512,
+      timeoutSeconds: 28, // one page of per-line TTS calls; stays under HTTP API's 30s ceiling
+    });
+    profilesTable.grantReadWriteData(narrateFn); // usage counter only — audio is never stored
+    narrateFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['ssm:GetParameter'],
+        resources: [ssmParamArn('openai-api-key')],
+      }),
+    );
+
     // --- HTTP API + routes ---
     this.httpApi = new apigwv2.HttpApi(this, 'HttpApi', {
       corsPreflight: {
@@ -212,6 +230,12 @@ export class ApiStack extends Stack {
       path: '/chapters/lesson-plan',
       methods: [apigwv2.HttpMethod.POST],
       integration: new HttpLambdaIntegration('LessonPlanIntegration', lessonPlanFn),
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/chapters/narrate',
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new HttpLambdaIntegration('NarrateIntegration', narrateFn),
       authorizer,
     });
 

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { MAX_PAGES_PER_CHAPTER, type ChapterFile, type ChapterPage, type ChatMessage } from '@teagent/shared';
+import { useNarrationStore } from './narrationStore';
 
 interface ChapterState {
   chapter: ChapterFile | null;
@@ -21,8 +22,14 @@ export const useChapterStore = create<ChapterState>()(
     (set) => ({
       chapter: null,
       chatHistory: [],
-      setChapter: (chapter) => set({ chapter, chatHistory: [] }),
-      clearChapter: () => set({ chapter: null, chatHistory: [] }),
+      setChapter: (chapter) => {
+        useNarrationStore.getState().reset();
+        set({ chapter, chatHistory: [] });
+      },
+      clearChapter: () => {
+        useNarrationStore.getState().reset();
+        set({ chapter: null, chatHistory: [] });
+      },
       appendChatMessage: (message) =>
         set((state) => ({ chatHistory: [...state.chatHistory, message] })),
       appendPages: (pages) =>

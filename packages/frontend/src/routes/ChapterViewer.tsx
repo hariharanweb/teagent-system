@@ -1,4 +1,4 @@
-import { Fragment, lazy, Suspense, useState } from 'react';
+import { Fragment, lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { MAX_PAGES_PER_CHAPTER, flattenChapterGlossary } from '@teagent/shared';
 import { useChapterStore } from '../state/chapterStore';
@@ -6,6 +6,10 @@ import { TranslationLine } from '../components/TranslationLine';
 import { FileDropzone } from '../components/FileDropzone';
 import { downloadChapterFile } from '../lib/fileIO';
 import { extractPagesFromFiles, type PageExtractionProgress } from '../lib/extractPages';
+import { NarrationBar } from '../components/NarrationBar';
+import { useNarrationPlayer } from '../hooks/useNarrationPlayer';
+import { assembleNarration } from '../lib/narration/assemble';
+import { useNarrationStore } from '../state/narrationStore';
 import { ChatPanel } from './ChatPanel';
 import { Glossary } from './Glossary';
 
@@ -36,6 +40,26 @@ export function ChapterViewer() {
   const [addError, setAddError] = useState<string | null>(null);
   const navigate = useNavigate();
 
+  const narratedPages = useNarrationStore((s) => s.pages);
+  const language = chapter?.language;
+  const chapterPages = chapter?.pages;
+  const narration = useMemo(
+    () => (language && chapterPages ? assembleNarration(language, chapterPages, narratedPages) : null),
+    [language, chapterPages, narratedPages],
+  );
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!narration) {
+      setAudioUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(new Blob([narration.file as BlobPart], { type: 'audio/mpeg' }));
+    setAudioUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [narration]);
+  const player = useNarrationPlayer(audioUrl, narration?.cues ?? []);
+  const narratedPageIds = useMemo(() => new Set(narration?.narratedPageIds), [narration]);
+
   if (!chapter) return <Navigate to="/upload" replace />;
 
   const glossary = flattenChapterGlossary(chapter);
@@ -58,7 +82,7 @@ export function ChapterViewer() {
   }
 
   return (
-    <div className="chapter-page" style={{ maxWidth: 640, margin: '1.5rem auto', padding: '0 1rem 6rem' }}>
+    <div className="chapter-page" style={{ maxWidth: 640, margin: '1.5rem auto', padding: '0 1rem 10rem' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h1 style={{ margin: 0, fontSize: '1.4rem' }}>{chapter.chapterTitle}</h1>
         <div className="no-print" style={{ display: 'flex', gap: '0.5rem' }}>
@@ -130,7 +154,18 @@ export function ChapterViewer() {
                       {line.section}
                     </h2>
                   )}
-                  <TranslationLine line={line} language={chapter.language} />
+                  <TranslationLine
+                    line={line}
+                    language={chapter.language}
+                    pageId={page.pageId}
+                    lineIndex={i}
+                    activeWordIndex={
+                      player.active?.pageId === page.pageId && player.active.lineIndex === i
+                        ? player.active.wordIndex
+                        : undefined
+                    }
+                    onWordClick={narratedPageIds.has(page.pageId) ? player.seekToWord : undefined}
+                  />
                 </Fragment>
               ))}
             </div>
@@ -167,7 +202,7 @@ export function ChapterViewer() {
         onClick={() => setChatOpen(true)}
         style={{
           position: 'fixed',
-          bottom: '1.25rem',
+          bottom: '6.5rem', // clears the narration bar
           right: '1.25rem',
           borderRadius: '999px',
           padding: '1rem 1.5rem',
@@ -176,6 +211,8 @@ export function ChapterViewer() {
       >
         💬 Ask Dev
       </button>
+
+      <NarrationBar chapter={chapter} player={player} file={narration?.file ?? null} />
 
       {chatOpen && <ChatPanel onClose={() => setChatOpen(false)} />}
     </div>

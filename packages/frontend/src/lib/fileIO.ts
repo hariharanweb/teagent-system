@@ -1,14 +1,22 @@
 import { chapterFileSchema, type ChapterFile } from '@teagent/shared';
 
-export function downloadChapterFile(chapter: ChapterFile): void {
-  const blob = new Blob([JSON.stringify(chapter, null, 2)], { type: 'application/json' });
+export function downloadBlob(blob: Blob, fileName: string): void {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
-  const safeTitle = chapter.chapterTitle.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
   anchor.href = url;
-  anchor.download = `${safeTitle || 'chapter'}.json`;
+  anchor.download = fileName;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+/** Chapter title as a safe file name stem, e.g. "Achchha Kaun!" → "achchha-kaun-". */
+export function chapterFileStem(chapter: ChapterFile): string {
+  return chapter.chapterTitle.replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'chapter';
+}
+
+export function downloadChapterFile(chapter: ChapterFile): void {
+  const blob = new Blob([JSON.stringify(chapter, null, 2)], { type: 'application/json' });
+  downloadBlob(blob, `${chapterFileStem(chapter)}.json`);
 }
 
 export class ChapterFileParseError extends Error {}

@@ -5,3 +5,7 @@ import { afterEach } from 'vitest';
 // Testing Library only auto-registers cleanup when vitest runs with `globals: true`, which this
 // project doesn't — without this, a second render() in the same file sees the first one's DOM.
 afterEach(cleanup);
+
+// jsdom has no media playback; the narration player only needs these to exist.
+window.HTMLMediaElement.prototype.pause = () => {};
+window.HTMLMediaElement.prototype.play = () => Promise.resolve();

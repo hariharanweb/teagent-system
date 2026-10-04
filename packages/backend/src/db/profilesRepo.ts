@@ -95,7 +95,7 @@ export async function touchLastLogin(familyId: string, profileId: string): Promi
   );
 }
 
-export type UsageFeature = 'extract' | 'chat' | 'lessonPlan';
+export type UsageFeature = 'extract' | 'chat' | 'lessonPlan' | 'narration';
 
 /**
  * Per-profile, per-feature daily usage counter (extract/chat/lessonPlan each have their own

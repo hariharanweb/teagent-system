@@ -12,10 +12,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@teagent/shared": "*",
+    "@breezystack/lamejs": "^1.2.7",
     "@fontsource-variable/lexend": "^5.1.0",
     "@fontsource/noto-sans-devanagari": "^5.1.0",
     "@fontsource/noto-sans-kannada": "^5.1.0",
+    "@teagent/shared": "*",
     "mermaid": "^11.17.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

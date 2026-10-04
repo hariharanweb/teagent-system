@@ -7,3 +7,4 @@ export * from './chat.schema.js';
 export * from './uploads.schema.js';
 export * from './extract.schema.js';
 export * from './lessonPlan.schema.js';
+export * from './narration.schema.js';

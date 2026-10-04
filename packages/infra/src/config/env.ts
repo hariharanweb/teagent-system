@@ -5,6 +5,8 @@ export interface EnvConfig {
   dailyExtractCap: number;
   dailyChatCap: number;
   dailyLessonPlanCap: number;
+  /** Narration pages generated per profile per day. */
+  dailyNarrationCap: number;
   uploadsLifecycleDays: number;
 }
 
@@ -19,6 +21,7 @@ export function loadEnvConfig(envName: string): EnvConfig {
     dailyExtractCap: envName === 'prod' ? 20 : 50,
     dailyChatCap: envName === 'prod' ? 200 : 500,
     dailyLessonPlanCap: envName === 'prod' ? 20 : 50,
+    dailyNarrationCap: envName === 'prod' ? 60 : 20,
     uploadsLifecycleDays: 1,
   };
 }

@@ -58,6 +58,14 @@ Consequences that constrain almost every change:
   validation with a friendly error instead of half-loading.
 - S3 uploads are staging only (1-day lifecycle rule); the image is fetched once during extraction.
 
+### Narration audio is never stored server-side either
+
+`/chapters/narrate` returns one base64 MP3 clip per line and keeps nothing. The browser
+(`lib/narration/`) decodes the clips, adds pauses, re-encodes one CBR MP3 per page, and stores
+Word timings in the MP3's ID3 tag. Audio lives in an in-memory store (`narrationStore`, too big for
+sessionStorage), and the downloaded MP3 is the durable copy, reopened via `restoreNarration`. Word
+timing inside a line is estimated: see `docs/adr/0001-*`. Domain terms are in `CONTEXT.md`.
+
 ### The shared contract
 
 `packages/shared` is the source of truth and both other packages import it as a built package, so
