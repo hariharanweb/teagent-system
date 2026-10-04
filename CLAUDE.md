@@ -51,7 +51,7 @@ Consequences that constrain almost every change:
 
 - `/chat/ask` and `/chapters/lesson-plan` receive the **entire chapter** in the request body, so
   size caps are correctness constraints, not polish: `MAX_TRANSLATION_LINES_PER_PAGE = 80`
-  (enforced by truncation + a warning in `handlers/chapters/extract.ts`) and
+  (enforced by truncation + a warning in `handlers/chapters/translate.ts`) and
   `MAX_PAGES_PER_CHAPTER = 15`.
 - Changing the shape of `ChapterFile` breaks every saved file on users' disks. Bump
   `CHAPTER_FILE_FORMAT_VERSION` (`chapter.schema.ts`) — it is a `z.literal`, so old files then fail
@@ -85,18 +85,23 @@ Handlers are thin: parse with a zod schema from shared → `getAuthContext(event
 `withErrorHandling`, which converts `HttpError` subclasses (`lib/errors.ts` —
 Unauthorized/Validation/NotFound/RateLimited) into responses; anything else becomes a 500.
 
-Two LangGraph state machines in `src/graphs` (state annotations in `state.ts`):
+Three LangGraph state machines in `src/graphs` (state annotations in `state.ts`). Extraction is
+**two requests per page**, orchestrated by the client (`lib/extractPages.ts`): reading and
+translating in one vision call made the model "correct" rare words (Kannada ವಠಾರ → ಪಟ್ಟಣ).
 
-- `extractChapterGraph` — fetch image URL → vision extraction → conditional self-repair retry
-  (`MAX_EXTRACTION_ATTEMPTS = 2`, feeding the zod validation error back as a repair prompt) →
-  glossary. Failures degrade rather than throw: they append to `warnings[]` and the response still
-  returns whatever succeeded.
+- `extractChapterGraph` (`/chapters/extract`) — fetch image URL → vision **transcription only**
+  into sections of printed lines → self-repair retry (`MAX_EXTRACTION_ATTEMPTS = 2`).
+- `translateChapterGraph` (`/chapters/translate`) — `splitSentences` splits the transcript into
+  sentences **in code**; the text model returns only meanings, one per sentence, and the original
+  text is attached from the transcript, so it can never be altered. Misalignment triggers one repair
+  retry, then degrades to a warning → glossary. Failures append to `warnings[]` rather than throw.
 - `chatGraph` — an LLM scope classifier gates the answer node; `on_topic` answers, anything else
   gets a canned decline. The classifier **fails closed**: unparseable classifier output is treated
   as `off_topic`. Keep this property when editing.
 
-Model selection lives in `llm/openaiClients.ts` (vision model only for extraction; the cheaper text
-model for glossary/chat/lesson plan). Prompts are builder functions in `llm/prompts/*.prompt.ts`;
+Model selection lives in `llm/openaiClients.ts`: vision `gpt-6-sol` at medium reasoning effort for
+transcription (gpt-4.1/4o loop or invent text on Kannada; reasoning models reject `temperature`),
+`gpt-4.1` for translation, the cheaper text model for glossary/chat/lesson plan, all env-overridable. Prompts are builder functions in `llm/prompts/*.prompt.ts`;
 model output goes through `extractJson` (strips ``` fences) then a zod parse.
 
 Secrets resolve via `auth/ssm.ts`: an env var wins (local `.env`), otherwise SSM Parameter Store at

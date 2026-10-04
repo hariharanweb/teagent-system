@@ -1,56 +1,31 @@
 import { LANGUAGES, type LanguageCode } from '@teagent/shared';
 
 /**
- * Asks for the page as ordered sections of lines; the graph flattens them into
- * translation lines tagged with their section. Field name for the original text
- * is the language's own code (hin/kan/...).
+ * Step 1 (vision): transcription only. Translating in the same call made the model "correct"
+ * rare words into familiar ones (e.g. Kannada ವಠಾರ → ಪಟ್ಟಣ), so reading and translating are split.
  */
-export function buildExtractionSystemPrompt(language: LanguageCode): string {
+export function buildTranscriptionSystemPrompt(language: LanguageCode): string {
   const { promptName } = LANGUAGES[language];
-  return `You are a careful ${promptName}-to-English translator for a school textbook page. Accuracy and completeness matter more than fluency.
+  return `You transcribe a photographed ${promptName} school textbook page. You do not translate.
 
-Follow these steps in order:
+1. IDENTIFY SECTIONS in reading order: the chapter title (with its number), an author/byline, every boxed or side panel (each usually has its own small heading), and the main body text (narration, dialogue, poem...). Ignore page numbers, QR codes, logos, corner labels, and faint text showing through from the other side of the paper.
 
-1. IDENTIFY SECTIONS. Look at the whole page and list its sections in reading order: the chapter title, every boxed or side panel (each usually has its own small heading), and the main body text. Ignore page numbers, QR codes, logos and labels inside illustrations.
+2. COPY EVERY PRINTED LINE of each section exactly as printed, letter by letter, from the first word to the last. Never skip, merge, reorder, summarise or translate anything. Text that wraps around a picture is still part of the same paragraph — keep reading it. Keep punctuation, brackets and speaker labels (e.g. "ಸೇತು:") as printed.
+   Copy unfamiliar, rare or dialect words exactly even if they look unusual. Never replace a word with a more common or "corrected" one, and never change a letter to make a word you know — a misread word is worse than an unusual one.
 
-2. TRANSCRIBE EVERY LINE. For each section, copy the ${promptName} text exactly as printed, from the first word to the last. Never skip, merge, reorder, shorten or summarise any sentence. Text that wraps around a picture is still part of the same paragraph — keep reading it.
-   Split into lines at sentence ends: full stop (। or .), ?, ! or |. Only split at a comma if the sentence is very long. Each line must contain the complete words between those breaks.
+3. CHECK: re-read the image section by section and confirm every printed line appears in your output.
 
-3. TRANSLATE EACH LINE on its own:
-   - "wordByWordMeaning": one English word or short gloss for EVERY ${promptName} word, in the original order. Do not leave out any word.
-   - "meaning": a natural English translation of that line only.
-   - If you cannot translate a word, write the original ${promptName} word in its place. Never guess, invent or add words that are not on the page.
-
-4. CHECK. Before answering, re-read the image section by section and confirm every printed sentence appears in your output. Add anything missing.
+Put the chapter title in "lines" (with "heading": null). Use "heading" only for a panel's own small heading, and never repeat the heading inside "lines".
 
 Output a JSON array of sections:
-[{"section":"<short English name of the section>","heading":<the section's printed heading as a line, or null if it has none>,"lines":[{"meaning":"...","wordByWordMeaning":"...","${language}":"..."}]}]
-
-Example for a page with a boxed panel and a story:
-[
-  {
-    "section": "Discussion on the lesson",
-    "heading": { "meaning": "Discussion on the lesson", "wordByWordMeaning": "Lesson on discussion", "hin": "पाठ पर चर्चा" },
-    "lines": [
-      { "meaning": "Ask the children what work they do in the morning, evening and night.", "wordByWordMeaning": "Children from ask that they morning, evening and night at which-which work do", "hin": "बच्चों से पूछें कि वे सुबह, शाम और रात को कौन-कौन से कार्य करते हैं" }
-    ]
-  },
-  {
-    "section": "Story",
-    "heading": null,
-    "lines": [
-      { "meaning": "Morning, afternoon, evening and night were four friends.", "wordByWordMeaning": "Morning, afternoon, evening and night four friends were", "hin": "सुबह, दोपहर, शाम और रात चार सहेलियाँ थीं" },
-      { "meaning": "Once all four started quarrelling among themselves.", "wordByWordMeaning": "One time all-four among-themselves in quarrel do started", "hin": "एक बार चारों आपस में झगड़ा करने लगीं" }
-    ]
-  }
-]
+[{"section":"<short English name>","heading":"<the section's printed heading, or null>","lines":["<printed line 1>","<printed line 2>"]}]
 
 Respond with ONLY the JSON array, no other text.`;
 }
 
-export function buildExtractionRepairPrompt(validationError: string): string {
-  return `Your previous response did not match the required JSON schema. Validation error:
+export function buildTranscriptionRepairPrompt(validationError: string): string {
+  return `Your previous response did not match the required JSON shape. Validation error:
 ${validationError}
 
-Please re-output ONLY a valid JSON array of sections, each {"section": string, "heading": line or null, "lines": [line, ...]}, with no other text. Do not drop any lines while fixing it.`;
+Re-output ONLY a valid JSON array of sections, each {"section": string, "heading": string or null, "lines": [string, ...]}, with no other text. Do not drop any lines while fixing it.`;
 }

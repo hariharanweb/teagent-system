@@ -1,17 +1,11 @@
 import { END, START, StateGraph } from '@langchain/langgraph';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
+import { pageTranscriptSchema } from '@teagent/shared';
+import { getVisionModel } from '../llm/openaiClients.js';
 import {
-  flattenTranslationSections,
-  glossarySchema,
-  translationSectionsSchema,
-  type AnyTranslationLine,
-} from '@teagent/shared';
-import { getTextModel, getVisionModel } from '../llm/openaiClients.js';
-import {
-  buildExtractionRepairPrompt,
-  buildExtractionSystemPrompt,
+  buildTranscriptionRepairPrompt,
+  buildTranscriptionSystemPrompt,
 } from '../llm/prompts/extraction.prompt.js';
-import { buildGlossarySystemPrompt, buildGlossaryUserPrompt } from '../llm/prompts/glossary.prompt.js';
 import { extractJson } from '../llm/parseJson.js';
 import { resolveVisionImageUrl } from '../s3/presign.js';
 import { ExtractState, type ExtractStateType } from './state.js';
@@ -23,13 +17,13 @@ async function fetchImageNode(state: ExtractStateType): Promise<Partial<ExtractS
   return { imageUrl };
 }
 
-async function extractionNode(state: ExtractStateType): Promise<Partial<ExtractStateType>> {
+/** Step 1 of extraction: transcribe the page as printed. Translation happens in translateChapterGraph. */
+async function transcribeNode(state: ExtractStateType): Promise<Partial<ExtractStateType>> {
   const model = await getVisionModel();
   const attempt = state.extractionAttempts + 1;
-  const systemPrompt = buildExtractionSystemPrompt(state.language);
 
   const messages = [
-    new SystemMessage(systemPrompt),
+    new SystemMessage(buildTranscriptionSystemPrompt(state.language)),
     new HumanMessage({
       // 'high' detail keeps small boxed/side-panel text legible; 'auto' downscales and lines get skipped.
       content: [{ type: 'image_url', image_url: { url: state.imageUrl, detail: 'high' } }],
@@ -37,17 +31,15 @@ async function extractionNode(state: ExtractStateType): Promise<Partial<ExtractS
   ];
 
   if (state.warnings.length > 0 && attempt > 1) {
-    messages.push(new SystemMessage(buildExtractionRepairPrompt(state.warnings.at(-1) ?? '')));
+    messages.push(new SystemMessage(buildTranscriptionRepairPrompt(state.warnings.at(-1) ?? '')));
   }
 
   const response = await model.invoke(messages);
   const rawText = typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
 
   try {
-    const parsed = extractJson(rawText);
-    const sections = translationSectionsSchema(state.language).parse(parsed);
-    const translationLines = flattenTranslationSections(sections) as AnyTranslationLine[];
-    return { translationLines, extractionAttempts: attempt };
+    const transcript = pageTranscriptSchema.parse(extractJson(rawText));
+    return { transcript, extractionAttempts: attempt };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return {
@@ -57,46 +49,19 @@ async function extractionNode(state: ExtractStateType): Promise<Partial<ExtractS
   }
 }
 
-function shouldRetryExtraction(state: ExtractStateType): 'extractionNode' | 'glossaryNode' {
-  const succeeded = state.translationLines.length > 0;
-  if (succeeded) return 'glossaryNode';
-  if (state.extractionAttempts < MAX_EXTRACTION_ATTEMPTS) return 'extractionNode';
-  return 'glossaryNode'; // give up after max attempts; warnings[] already records the failure
-}
-
-async function glossaryNode(state: ExtractStateType): Promise<Partial<ExtractStateType>> {
-  if (state.translationLines.length === 0) {
-    return { warnings: ['skipped glossary generation: no translation lines were extracted'] };
-  }
-
-  const model = await getTextModel();
-  const messages = [
-    new SystemMessage(buildGlossarySystemPrompt(state.language)),
-    new HumanMessage(buildGlossaryUserPrompt(state.translationLines)),
-  ];
-
-  try {
-    const response = await model.invoke(messages);
-    const rawText = typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
-    const parsed = extractJson(rawText);
-    const glossary = glossarySchema.parse(parsed);
-    return { glossary };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { warnings: [`glossary generation failed, returning empty glossary: ${message}`] };
-  }
+function shouldRetryTranscription(state: ExtractStateType): 'transcribeNode' | typeof END {
+  if (state.transcript.length > 0) return END;
+  return state.extractionAttempts < MAX_EXTRACTION_ATTEMPTS ? 'transcribeNode' : END;
 }
 
 const graph = new StateGraph(ExtractState)
   .addNode('fetchImageNode', fetchImageNode)
-  .addNode('extractionNode', extractionNode)
-  .addNode('glossaryNode', glossaryNode)
+  .addNode('transcribeNode', transcribeNode)
   .addEdge(START, 'fetchImageNode')
-  .addEdge('fetchImageNode', 'extractionNode')
-  .addConditionalEdges('extractionNode', shouldRetryExtraction, {
-    extractionNode: 'extractionNode',
-    glossaryNode: 'glossaryNode',
-  })
-  .addEdge('glossaryNode', END);
+  .addEdge('fetchImageNode', 'transcribeNode')
+  .addConditionalEdges('transcribeNode', shouldRetryTranscription, {
+    transcribeNode: 'transcribeNode',
+    [END]: END,
+  });
 
 export const extractChapterGraph = graph.compile();

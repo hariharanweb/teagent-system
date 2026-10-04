@@ -1,13 +1,23 @@
 import type { ChapterPage, LanguageCode } from '@teagent/shared';
 import { normalizeImageForUpload, ImageValidationError } from './imageValidation';
 import { uploadChapterImage } from '../api/uploadsApi';
-import { extractChapter } from '../api/chaptersApi';
+import { extractChapter, translateChapter } from '../api/chaptersApi';
 import { ApiError } from '../api/client';
 
 export interface PageExtractionProgress {
   current: number;
   total: number;
-  stage: 'uploading' | 'reading';
+  stage: 'uploading' | 'reading' | 'translating';
+}
+
+const STAGE_VERB: Record<PageExtractionProgress['stage'], string> = {
+  uploading: 'Uploading',
+  reading: 'Reading',
+  translating: 'Translating',
+};
+
+export function progressLabel(progress: PageExtractionProgress): string {
+  return `${STAGE_VERB[progress.stage]} page ${progress.current} of ${progress.total}…`;
 }
 
 export interface ExtractPagesResult {
@@ -17,7 +27,7 @@ export interface ExtractPagesResult {
 }
 
 /**
- * Uploads + extracts each file in order, one page per file. Stops on the first failure but
+ * Uploads, transcribes and translates each file in order, one page per file. Stops on the first failure but
  * returns whatever pages succeeded first, so the caller can keep partial progress rather than
  * losing it (a batch of 5 photos shouldn't be thrown away because photo 3 was blurry).
  */
@@ -37,13 +47,17 @@ export async function extractPagesFromFiles(
       const s3Key = await uploadChapterImage(normalized, language);
 
       onProgress?.({ current: i + 1, total: files.length, stage: 'reading' });
-      const result = await extractChapter({ s3Key, language });
+      const extracted = await extractChapter({ s3Key, language });
+
+      // Translating is a separate request so the original text can't be "corrected" while translating.
+      onProgress?.({ current: i + 1, total: files.length, stage: 'translating' });
+      const result = await translateChapter({ language, transcript: extracted.transcript });
 
       pages.push({
         pageId: crypto.randomUUID(),
         translation: result.translation,
         glossary: result.glossary,
-        warnings: result.warnings,
+        warnings: [...extracted.warnings, ...result.warnings],
         createdAt: result.createdAt,
       });
     } catch (err) {

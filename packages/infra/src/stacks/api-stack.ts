@@ -118,7 +118,7 @@ export class ApiStack extends Stack {
         DAILY_EXTRACT_CAP: String(envConfig.dailyExtractCap),
       },
       memoryMb: 1024,
-      timeoutSeconds: 25, // stays under HTTP API's 30s integration ceiling — plan risk #2
+      timeoutSeconds: 29, // medium-effort transcription; HTTP API's integration ceiling is 30s
     });
     this.uploadsBucket.grantRead(extractFn);
     profilesTable.grantReadWriteData(extractFn); // usage counter
@@ -159,6 +159,25 @@ export class ApiStack extends Stack {
     });
     profilesTable.grantReadWriteData(lessonPlanFn); // usage counter only — no lesson content stored
     lessonPlanFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['ssm:GetParameter'],
+        resources: [ssmParamArn('openai-api-key')],
+      }),
+    );
+
+    const translateFn = new LambdaNodeFn(this, 'TranslateFn', {
+      entry: backendHandlerEntry('handlers/chapters/translate.ts'),
+      environment: {
+        ...commonEnv,
+        PROFILES_TABLE_NAME: profilesTable.tableName,
+        // One translate per extracted page, so it shares the extract cap.
+        DAILY_TRANSLATE_CAP: String(envConfig.dailyExtractCap),
+      },
+      memoryMb: 512,
+      timeoutSeconds: 28,
+    });
+    profilesTable.grantReadWriteData(translateFn); // usage counter only
+    translateFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['ssm:GetParameter'],
         resources: [ssmParamArn('openai-api-key')],
@@ -218,6 +237,12 @@ export class ApiStack extends Stack {
       path: '/chapters/extract',
       methods: [apigwv2.HttpMethod.POST],
       integration: new HttpLambdaIntegration('ExtractIntegration', extractFn),
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/chapters/translate',
+      methods: [apigwv2.HttpMethod.POST],
+      integration: new HttpLambdaIntegration('TranslateIntegration', translateFn),
       authorizer,
     });
     this.httpApi.addRoutes({

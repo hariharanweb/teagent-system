@@ -8,15 +8,10 @@ import {
   type LanguageCode,
 } from '@teagent/shared';
 import { FileDropzone } from '../components/FileDropzone';
-import { extractPagesFromFiles, type PageExtractionProgress } from '../lib/extractPages';
+import { extractPagesFromFiles, progressLabel, type PageExtractionProgress } from '../lib/extractPages';
 import { readChapterFile, ChapterFileParseError } from '../lib/fileIO';
 import { useAuthStore } from '../state/authStore';
 import { useChapterStore } from '../state/chapterStore';
-
-function progressLabel(progress: PageExtractionProgress): string {
-  const verb = progress.stage === 'uploading' ? 'Uploading' : 'Reading';
-  return `${verb} page ${progress.current} of ${progress.total}…`;
-}
 
 export function ChapterUpload() {
   const preferredLanguage = useAuthStore((s) => s.profile?.preferredLanguage) as

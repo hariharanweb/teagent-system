@@ -1,11 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 const visionInvokeMock = vi.fn();
-const textInvokeMock = vi.fn();
 
 vi.mock('../llm/openaiClients.js', () => ({
   getVisionModel: async () => ({ invoke: visionInvokeMock }),
-  getTextModel: async () => ({ invoke: textInvokeMock }),
 }));
 
 vi.mock('../s3/presign.js', () => ({
@@ -14,75 +12,43 @@ vi.mock('../s3/presign.js', () => ({
 
 const { extractChapterGraph } = await import('./extractChapterGraph.js');
 
-describe('extractChapterGraph', () => {
+const transcript = [
+  { section: 'Title', heading: null, lines: ['ಹಂಚಿ ತಿನ್ನೋಣ'] },
+  { section: 'Narration', heading: null, lines: ['ಬಾಲು ಮತ್ತು ಸೇತು ಒಂದೇ ವಠಾರದಲ್ಲಿ', 'ವಾಸ ಮಾಡುತ್ತಿದ್ದರು.'] },
+];
+
+describe('extractChapterGraph (transcription)', () => {
   beforeEach(() => {
     visionInvokeMock.mockReset();
-    textInvokeMock.mockReset();
   });
 
-  it('extracts and generates a glossary on the first attempt', async () => {
-    visionInvokeMock.mockResolvedValueOnce({
-      content: JSON.stringify([
-        {
-          section: 'Story',
-          heading: { meaning: 'Who is good', wordByWordMeaning: 'Good who', hin: 'अच्छा कौन' },
-          lines: [{ meaning: 'did not take', wordByWordMeaning: 'From not took', hin: 'से नहीं लिया' }],
-        },
-      ]),
-    });
-    textInvokeMock.mockResolvedValueOnce({
-      content: JSON.stringify([
-        { word: 'लिया', language: 'hin', meaning: 'took', synonyms: ['ग्रहण किया'] },
-      ]),
-    });
+  it('returns the page transcript on the first attempt, sending the image at high detail', async () => {
+    visionInvokeMock.mockResolvedValueOnce({ content: JSON.stringify(transcript) });
 
-    const result = await extractChapterGraph.invoke({
-      imageS3Key: 'uploads/p1/img.jpg',
-      language: 'hin',
-    });
+    const result = await extractChapterGraph.invoke({ imageS3Key: 'uploads/p1/img.jpg', language: 'kan' });
 
-    expect(result.translationLines).toHaveLength(2);
-    expect(result.translationLines.map((l) => l.hin)).toEqual(['अच्छा कौन', 'से नहीं लिया']);
-    expect(result.translationLines.every((l) => l.section === 'Story')).toBe(true);
-    expect(result.glossary).toHaveLength(1);
+    expect(result.transcript).toEqual(transcript);
     expect(result.warnings).toHaveLength(0);
-    expect(visionInvokeMock).toHaveBeenCalledTimes(1);
+    const [, human] = visionInvokeMock.mock.calls[0]![0];
+    expect(human.content[0].image_url).toEqual({ url: 'https://example.com/uploads/p1/img.jpg?signed=1', detail: 'high' });
   });
 
-  it('retries once on invalid JSON then records a warning if still invalid', async () => {
-    visionInvokeMock
-      .mockResolvedValueOnce({ content: 'not json' })
-      .mockResolvedValueOnce({ content: 'still not json' });
+  it('retries once with a repair prompt, then gives up with a warning', async () => {
+    visionInvokeMock.mockResolvedValueOnce({ content: 'not json' }).mockResolvedValueOnce({ content: 'still not json' });
 
-    const result = await extractChapterGraph.invoke({
-      imageS3Key: 'uploads/p1/img.jpg',
-      language: 'hin',
-    });
+    const result = await extractChapterGraph.invoke({ imageS3Key: 'uploads/p1/img.jpg', language: 'kan' });
 
     expect(visionInvokeMock).toHaveBeenCalledTimes(2);
-    expect(result.translationLines).toHaveLength(0);
+    expect(visionInvokeMock.mock.calls[1]![0]).toHaveLength(3); // system + image + repair prompt
+    expect(result.transcript).toHaveLength(0);
     expect(result.warnings.some((w) => w.includes('failed schema validation'))).toBe(true);
-    expect(result.warnings.some((w) => w.includes('skipped glossary generation'))).toBe(true);
-    expect(textInvokeMock).not.toHaveBeenCalled();
   });
 
-  it('recovers after one retry when the second attempt is valid', async () => {
-    visionInvokeMock
-      .mockResolvedValueOnce({ content: 'garbled output' })
-      .mockResolvedValueOnce({
-        content: JSON.stringify([
-          { section: 'Story', heading: null, lines: [{ meaning: 'hello', wordByWordMeaning: 'hello', hin: 'नमस्ते' }] },
-        ]),
-      });
-    textInvokeMock.mockResolvedValueOnce({ content: '[]' });
+  it('recovers when the retry is valid', async () => {
+    visionInvokeMock.mockResolvedValueOnce({ content: 'garbled' }).mockResolvedValueOnce({ content: JSON.stringify(transcript) });
 
-    const result = await extractChapterGraph.invoke({
-      imageS3Key: 'uploads/p1/img.jpg',
-      language: 'hin',
-    });
+    const result = await extractChapterGraph.invoke({ imageS3Key: 'uploads/p1/img.jpg', language: 'kan' });
 
-    expect(visionInvokeMock).toHaveBeenCalledTimes(2);
-    expect(result.translationLines).toHaveLength(1);
-    expect(result.glossary).toHaveLength(0);
+    expect(result.transcript).toEqual(transcript);
   });
 });

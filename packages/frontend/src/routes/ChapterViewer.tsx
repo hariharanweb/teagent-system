@@ -5,7 +5,7 @@ import { useChapterStore } from '../state/chapterStore';
 import { TranslationLine } from '../components/TranslationLine';
 import { FileDropzone } from '../components/FileDropzone';
 import { downloadChapterFile } from '../lib/fileIO';
-import { extractPagesFromFiles, type PageExtractionProgress } from '../lib/extractPages';
+import { extractPagesFromFiles, progressLabel, type PageExtractionProgress } from '../lib/extractPages';
 import { NarrationBar } from '../components/NarrationBar';
 import { useNarrationPlayer } from '../hooks/useNarrationPlayer';
 import { assembleNarration } from '../lib/narration/assemble';
@@ -24,11 +24,6 @@ const TAB_LABELS: Record<Tab, string> = {
   glossary: 'Glossary',
   lessonPlan: 'Lesson Plan',
 };
-
-function progressLabel(progress: PageExtractionProgress): string {
-  const verb = progress.stage === 'uploading' ? 'Uploading' : 'Reading';
-  return `${verb} page ${progress.current} of ${progress.total}…`;
-}
 
 export function ChapterViewer() {
   const chapter = useChapterStore((s) => s.chapter);

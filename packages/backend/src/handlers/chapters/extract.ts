@@ -1,4 +1,4 @@
-import { extractRequestSchema, MAX_TRANSLATION_LINES_PER_PAGE, type ExtractResponse } from '@teagent/shared';
+import { extractRequestSchema, type ExtractResponse } from '@teagent/shared';
 import { extractChapterGraph } from '../../graphs/extractChapterGraph.js';
 import { UnauthorizedError, ValidationError } from '../../lib/errors.js';
 import { okResponse } from '../../lib/httpResponse.js';
@@ -9,6 +9,7 @@ import { RateLimitedError } from '../../lib/errors.js';
 
 const DAILY_EXTRACT_CAP = Number(process.env.DAILY_EXTRACT_CAP ?? 20);
 
+/** Step 1: photo → transcript. The client then sends the transcript to /chapters/translate. */
 async function extractHandler(event: AuthenticatedEvent) {
   const { profileId } = getAuthContext(event);
   const parsed = extractRequestSchema.safeParse(JSON.parse(event.body ?? '{}'));
@@ -24,23 +25,11 @@ async function extractHandler(event: AuthenticatedEvent) {
   if (!usage.withinCap) throw new RateLimitedError();
 
   const result = await extractChapterGraph.invoke({ imageS3Key: s3Key, language });
-
-  const warnings = [...result.warnings];
-  let translation = result.translationLines;
-  if (translation.length > MAX_TRANSLATION_LINES_PER_PAGE) {
-    translation = translation.slice(0, MAX_TRANSLATION_LINES_PER_PAGE);
-    warnings.push(
-      `This page had more than ${MAX_TRANSLATION_LINES_PER_PAGE} lines — showing the first ${MAX_TRANSLATION_LINES_PER_PAGE}. Try splitting it into two photos.`,
-    );
+  if (result.transcript.length === 0) {
+    throw new ValidationError("Couldn't read any text on this page — try a clearer, straighter photo.");
   }
 
-  const response: ExtractResponse = {
-    language,
-    translation,
-    glossary: result.glossary,
-    warnings,
-    createdAt: new Date().toISOString(),
-  };
+  const response: ExtractResponse = { language, transcript: result.transcript, warnings: result.warnings };
   return okResponse(response);
 }
 
