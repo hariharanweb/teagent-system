@@ -4,18 +4,44 @@ import { LANGUAGE_CODES, type LanguageCode } from './languages.js';
 const baseLineFields = {
   meaning: z.string().min(1),
   wordByWordMeaning: z.string().min(1),
+  /** English name of the page section this line belongs to. Optional so pre-section files still load. */
+  section: z.string().min(1).optional(),
 };
 
-/** Builds the exact required line shape for one language: {meaning, wordByWordMeaning, [lang]}. */
+/** Builds the exact required line shape for one language: {meaning, wordByWordMeaning, [lang], section?}. */
 export function makeTranslationLineSchema<L extends LanguageCode>(lang: L) {
   return z.object({
     ...baseLineFields,
     [lang]: z.string().min(1),
-  } as Record<'meaning' | 'wordByWordMeaning' | L, z.ZodString>);
+  } as typeof baseLineFields & Record<L, z.ZodString>);
 }
 
 export function translationLinesSchema<L extends LanguageCode>(lang: L) {
   return z.array(makeTranslationLineSchema(lang));
+}
+
+/**
+ * The vision model's raw output: the page split into sections in reading order.
+ * `heading` is the section's own printed heading, if it has one.
+ */
+export function translationSectionsSchema<L extends LanguageCode>(lang: L) {
+  const line = makeTranslationLineSchema(lang).omit({ section: true });
+  return z.array(
+    z.object({
+      section: z.string().min(1),
+      heading: line.nullish(),
+      lines: z.array(line),
+    }),
+  );
+}
+
+/** Flattens sections into ordered lines, tagging each (heading included) with its section name. */
+export function flattenTranslationSections<L extends LanguageCode>(
+  sections: z.infer<ReturnType<typeof translationSectionsSchema<L>>>,
+): TranslationLine<L>[] {
+  return sections.flatMap(({ section, heading, lines }) =>
+    [...(heading ? [heading] : []), ...lines].map((line) => ({ ...line, section }) as TranslationLine<L>),
+  );
 }
 
 /** Accepts a line for any known language — used when the language isn't known until parse time (e.g. reloading a saved file). */

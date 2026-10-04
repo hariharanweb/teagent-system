@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { Fragment, lazy, Suspense, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { MAX_PAGES_PER_CHAPTER, flattenChapterGlossary } from '@teagent/shared';
 import { useChapterStore } from '../state/chapterStore';
@@ -124,7 +124,14 @@ export function ChapterViewer() {
                 </h2>
               )}
               {page.translation.map((line, i) => (
-                <TranslationLine key={i} line={line} language={chapter.language} />
+                <Fragment key={i}>
+                  {line.section && line.section !== page.translation[i - 1]?.section && (
+                    <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '1.25rem 0 0.5rem 0' }}>
+                      {line.section}
+                    </h2>
+                  )}
+                  <TranslationLine line={line} language={chapter.language} />
+                </Fragment>
               ))}
             </div>
           ))}

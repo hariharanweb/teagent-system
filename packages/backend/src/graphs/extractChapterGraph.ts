@@ -1,6 +1,11 @@
 import { END, START, StateGraph } from '@langchain/langgraph';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
-import { glossarySchema, translationLinesSchema, type AnyTranslationLine } from '@teagent/shared';
+import {
+  flattenTranslationSections,
+  glossarySchema,
+  translationSectionsSchema,
+  type AnyTranslationLine,
+} from '@teagent/shared';
 import { getTextModel, getVisionModel } from '../llm/openaiClients.js';
 import {
   buildExtractionRepairPrompt,
@@ -26,7 +31,8 @@ async function extractionNode(state: ExtractStateType): Promise<Partial<ExtractS
   const messages = [
     new SystemMessage(systemPrompt),
     new HumanMessage({
-      content: [{ type: 'image_url', image_url: { url: state.imageUrl } }],
+      // 'high' detail keeps small boxed/side-panel text legible; 'auto' downscales and lines get skipped.
+      content: [{ type: 'image_url', image_url: { url: state.imageUrl, detail: 'high' } }],
     }),
   ];
 
@@ -39,7 +45,8 @@ async function extractionNode(state: ExtractStateType): Promise<Partial<ExtractS
 
   try {
     const parsed = extractJson(rawText);
-    const translationLines = translationLinesSchema(state.language).parse(parsed) as AnyTranslationLine[];
+    const sections = translationSectionsSchema(state.language).parse(parsed);
+    const translationLines = flattenTranslationSections(sections) as AnyTranslationLine[];
     return { translationLines, extractionAttempts: attempt };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

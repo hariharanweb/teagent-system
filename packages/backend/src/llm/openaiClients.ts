@@ -2,7 +2,8 @@ import { ChatOpenAI } from '@langchain/openai';
 import { getOpenAiApiKey } from '../auth/ssm.js';
 
 // Vision-capable model is only needed for image extraction — the expensive call.
-const VISION_MODEL = process.env.OPENAI_VISION_MODEL ?? 'gpt-4o';
+// gpt-4.1: better OCR/instruction-following than gpt-4o on Indic pages, and cheaper per token.
+const VISION_MODEL = process.env.OPENAI_VISION_MODEL ?? 'gpt-4.1';
 // Cheaper text model for glossary generation, chat scope-check, and chat answers.
 const TEXT_MODEL = process.env.OPENAI_TEXT_MODEL ?? 'gpt-4o-mini';
 

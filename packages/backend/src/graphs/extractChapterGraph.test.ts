@@ -23,7 +23,11 @@ describe('extractChapterGraph', () => {
   it('extracts and generates a glossary on the first attempt', async () => {
     visionInvokeMock.mockResolvedValueOnce({
       content: JSON.stringify([
-        { meaning: 'did not take', wordByWordMeaning: 'From not took', hin: 'से नहीं लिया' },
+        {
+          section: 'Story',
+          heading: { meaning: 'Who is good', wordByWordMeaning: 'Good who', hin: 'अच्छा कौन' },
+          lines: [{ meaning: 'did not take', wordByWordMeaning: 'From not took', hin: 'से नहीं लिया' }],
+        },
       ]),
     });
     textInvokeMock.mockResolvedValueOnce({
@@ -37,8 +41,9 @@ describe('extractChapterGraph', () => {
       language: 'hin',
     });
 
-    expect(result.translationLines).toHaveLength(1);
-    expect(result.translationLines[0]?.hin).toBe('से नहीं लिया');
+    expect(result.translationLines).toHaveLength(2);
+    expect(result.translationLines.map((l) => l.hin)).toEqual(['अच्छा कौन', 'से नहीं लिया']);
+    expect(result.translationLines.every((l) => l.section === 'Story')).toBe(true);
     expect(result.glossary).toHaveLength(1);
     expect(result.warnings).toHaveLength(0);
     expect(visionInvokeMock).toHaveBeenCalledTimes(1);
@@ -66,7 +71,7 @@ describe('extractChapterGraph', () => {
       .mockResolvedValueOnce({ content: 'garbled output' })
       .mockResolvedValueOnce({
         content: JSON.stringify([
-          { meaning: 'hello', wordByWordMeaning: 'hello', hin: 'नमस्ते' },
+          { section: 'Story', heading: null, lines: [{ meaning: 'hello', wordByWordMeaning: 'hello', hin: 'नमस्ते' }] },
         ]),
       });
     textInvokeMock.mockResolvedValueOnce({ content: '[]' });
